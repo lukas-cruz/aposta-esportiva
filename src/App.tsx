@@ -17,7 +17,9 @@ export default function App() {
     lucroTotal: 0,
     perdaTotal: 0,
     saldoGeral: 0,
-    totalApostado: 0
+    totalApostado: 0,
+    investimentoInicial: 0,
+    bancaAtual: 0
   });
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -50,24 +52,60 @@ export default function App() {
 
       if (apostasRes.ok && statsRes.ok) {
         const apostasData = await apostasRes.json();
-        const { stats: statsData, dailyStats: dailyData } = await statsRes.json();
+        const statsResponse = await statsRes.json();
+        console.log("Stats recebidos da API:", statsResponse);
+        const { stats: statsData, dailyStats: dailyData } = statsResponse;
         
         setApostas(apostasData.data);
         setTotalPages(apostasData.totalPages);
         setTotalItems(apostasData.total);
-        setStats(statsData || {
+        const defaultStats = {
           totalApostas: 0,
           lucroTotal: 0,
           perdaTotal: 0,
           saldoGeral: 0,
-          totalApostado: 0
-        });
+          totalApostado: 0,
+          investimentoInicial: 0,
+          bancaAtual: 0
+        };
+        setStats(statsData ? { ...defaultStats, ...statsData } : defaultStats);
         setDailyStats(dailyData);
+      } else {
+        const errorText = await (apostasRes.ok ? statsRes.text() : apostasRes.text());
+        console.error('Erro na resposta da API:', errorText);
       }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     }
   }, [filters, currentPage]);
+
+  const handleUpdateInvestment = async (valor: number) => {
+    console.log('Enviando atualização de investimento:', valor);
+    try {
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ investimentoInicial: valor })
+      });
+      if (response.ok) {
+        fetchData();
+      } else {
+        const contentType = response.headers.get('content-type');
+        let errorMsg = 'Erro ao atualizar investimento';
+        if (contentType && contentType.includes('application/json')) {
+          const errData = await response.json();
+          errorMsg = errData.error || errorMsg;
+        } else {
+          const text = await response.text();
+          console.error('Erro não-JSON ao atualizar investimento:', text);
+        }
+        alert(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar investimento:', error);
+      alert('Erro de conexão ao atualizar investimento: ' + (error.message || 'Erro desconhecido'));
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -218,7 +256,7 @@ export default function App() {
           >
             {activeTab === 'dashboard' && (
               <>
-                <Dashboard stats={stats} />
+                <Dashboard stats={stats} onUpdateInvestment={handleUpdateInvestment} />
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                   <div className="xl:col-span-2">
                     <div className="flex items-center justify-between mb-6">

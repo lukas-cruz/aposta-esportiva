@@ -18,6 +18,8 @@ export interface Stats {
   perdaTotal: number;
   saldoGeral: number;
   totalApostado: number;
+  investimentoInicial: number;
+  bancaAtual: number;
 }
 
 export interface DailyStat {

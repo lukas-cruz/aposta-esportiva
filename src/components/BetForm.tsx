@@ -56,12 +56,23 @@ export const BetForm: React.FC<BetFormProps> = ({ onClose, onSave, initialData }
         onSave();
         onClose();
       } else {
-        const errorData = await response.json();
-        alert(`Erro ao salvar: ${errorData.error || 'Erro desconhecido'}`);
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Erro desconhecido';
+        
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } else {
+          const textError = await response.text();
+          console.error('Erro não-JSON recebido:', textError);
+          errorMessage = `Erro do servidor (${response.status}): ${response.statusText}`;
+        }
+        
+        alert(`Erro ao salvar: ${errorMessage}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar aposta:', error);
-      alert('Erro de conexão ao salvar aposta. Verifique se o Supabase está configurado corretamente.');
+      alert(`Erro de conexão ao salvar aposta: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
